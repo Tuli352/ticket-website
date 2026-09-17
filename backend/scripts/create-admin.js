@@ -13,9 +13,9 @@ if (!username || !password) {
 
 const hash = await bcrypt.hash(password, 10);
 await pool.query(
-  `INSERT INTO admins (username, password_hash) VALUES (?, ?)
-   ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`,
+  `INSERT INTO admins (username, password_hash) VALUES ($1, $2)
+   ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
   [username, hash]
 );
 console.log(`Admin "${username}" ready.`);
-process.exit(0);
+await pool.end();
