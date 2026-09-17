@@ -15,15 +15,13 @@ app.use(express.json());
 const paymentLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 app.use("/api/payments", paymentLimiter);
 
-<<<<<<< HEAD
 // Rate-limit admin login against brute-forcing.
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 app.use("/api/admin/login", loginLimiter);
-=======
+
 app.get("/", (req, res) => {
   res.json({ status: "ok", service: "neyo-tickets-api", database: "postgresql" });
 });
->>>>>>> b0ab0008cf6bfcda1e38e280bfa84994f4c790df
 
 app.use("/api", apiRoutes);
 
