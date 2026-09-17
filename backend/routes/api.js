@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { pool } from "../config/db.js";
 import { stkPush, parseCallback } from "../services/mpesa.js";
 import { createPayment, markPaymentResult, getOrderStatus } from "../services/payments.js";
+import { verifyAdmin, issueToken, requireAdmin } from "../services/auth.js";
 
 const router = express.Router();
 const RESERVATION_MINUTES = 10;
@@ -161,8 +162,18 @@ router.get("/tickets/:orderId", async (req, res) => {
   res.json(tickets);
 });
 
-// --- Admin (add real auth middleware before deploying) ---
-router.get("/admin/orders", async (req, res) => {
+// --- Admin ---
+
+// POST /api/admin/login — issues a JWT, used as Bearer token on every other /admin/* call.
+// Rate-limited by paymentLimiter's sibling below in server.js? No — add its own limiter there.
+router.post("/admin/login", async (req, res) => {
+  const { username, password } = req.body;
+  const admin = await verifyAdmin(username, password);
+  if (!admin) return res.status(401).json({ error: "Invalid credentials." });
+  res.json({ token: issueToken(admin), username: admin.username });
+});
+
+router.get("/admin/orders", requireAdmin, async (req, res) => {
   const [orders] = await pool.query(
     `SELECT o.*, t.name AS ticket_type_name FROM orders o
      JOIN ticket_types t ON t.id = o.ticket_type_id
@@ -171,8 +182,46 @@ router.get("/admin/orders", async (req, res) => {
   res.json(orders);
 });
 
-// Closes sales without touching any stored data — used by the cron job below.
-router.post("/admin/close-sales", async (req, res) => {
+router.get("/admin/summary", requireAdmin, async (req, res) => {
+  const [[revenue]] = await pool.query(
+    `SELECT COALESCE(SUM(total_amount), 0) AS total_revenue,
+            COALESCE(SUM(quantity), 0) AS tickets_sold
+     FROM orders WHERE status = 'paid'`
+  );
+  const [[pendingMpesa]] = await pool.query(
+    `SELECT COUNT(*) AS count FROM payments WHERE method = 'mpesa' AND status IN ('initiated','pending')`
+  );
+  const [[pendingBank]] = await pool.query(
+    `SELECT COUNT(*) AS count FROM payments WHERE method = 'bank' AND status = 'initiated'`
+  );
+  const [[settings]] = await pool.query(`SELECT * FROM event_settings ORDER BY id DESC LIMIT 1`);
+  res.json({
+    revenue: revenue.total_revenue,
+    ticketsSold: revenue.tickets_sold,
+    pendingMpesa: pendingMpesa.count,
+    pendingBank: pendingBank.count,
+    salesStatus: settings?.status,
+  });
+});
+
+router.get("/admin/payments", requireAdmin, async (req, res) => {
+  const [payments] = await pool.query(
+    `SELECT p.*, o.customer_name, o.customer_phone FROM payments p
+     JOIN orders o ON o.id = p.order_id ORDER BY p.created_at DESC`
+  );
+  res.json(payments);
+});
+
+router.get("/admin/tickets", requireAdmin, async (req, res) => {
+  const [tickets] = await pool.query(
+    `SELECT tk.*, o.customer_name, o.customer_email FROM tickets tk
+     JOIN orders o ON o.id = tk.order_id ORDER BY tk.issued_at DESC`
+  );
+  res.json(tickets);
+});
+
+// Closes sales without touching any stored data.
+router.post("/admin/close-sales", requireAdmin, async (req, res) => {
   await pool.query(`UPDATE event_settings SET status = 'closed' WHERE status = 'open'`);
   res.json({ closed: true });
 });

@@ -18,4 +18,12 @@ export const api = {
   payBank: (payload) => request("/payments/bank", { method: "POST", body: JSON.stringify(payload) }),
   orderStatus: (orderId) => request(`/payments/order/${orderId}/status`),
   tickets: (orderId) => request(`/tickets/${orderId}`),
+
+  adminLogin: (payload) => request("/admin/login", { method: "POST", body: JSON.stringify(payload) }),
+  adminSummary: (token) => request("/admin/summary", { headers: { Authorization: `Bearer ${token}` } }),
+  adminOrders: (token) => request("/admin/orders", { headers: { Authorization: `Bearer ${token}` } }),
+  adminPayments: (token) => request("/admin/payments", { headers: { Authorization: `Bearer ${token}` } }),
+  adminTickets: (token) => request("/admin/tickets", { headers: { Authorization: `Bearer ${token}` } }),
+  adminCloseSales: (token) =>
+    request("/admin/close-sales", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 };

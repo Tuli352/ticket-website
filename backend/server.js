@@ -16,6 +16,10 @@ app.use(express.json());
 const paymentLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 app.use("/api/payments", paymentLimiter);
 
+// Rate-limit admin login against brute-forcing.
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+app.use("/api/admin/login", loginLimiter);
+
 app.use("/api", apiRoutes);
 
 // Runs every 5 minutes: flips sales to "closed" once the window has

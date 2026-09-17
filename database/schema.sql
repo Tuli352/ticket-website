@@ -73,7 +73,7 @@ CREATE TABLE admins (
 
 -- seed example
 INSERT INTO event_settings (event_name, venue, event_date, sales_open_at, sales_close_at, status)
-VALUES ('Ne-Yo Live', 'TBD Venue, Nairobi', '2026-09-20 19:00:00', NOW(), DATE_ADD(NOW(), INTERVAL 8 HOUR), 'open');
+VALUES ('Ne-Yo Live', 'TBD Venue, Nairobi', '2026-09-20 19:00:00', NOW(), DATE_ADD(NOW(), INTERVAL 98 HOUR), 'open');
 
 INSERT INTO ticket_types (name, price, total_quantity) VALUES
 ('Regular', 3000.00, 500),

@@ -3,6 +3,33 @@ import { api } from "../utils/api.js";
 import { Button, Countdown, Spinner } from "../components/UI.jsx";
 import { TicketTierCard } from "../components/Ticket.jsx";
 
+function TopBar() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        padding: "0.8rem 1.5rem 0",
+      }}
+    >
+      <a
+        href="/admin"
+        style={{
+          fontSize: "0.75rem",
+          color: "var(--text-dim)",
+          letterSpacing: "0.03em",
+          textDecoration: "none",
+          opacity: 0.7,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.7)}
+      >
+        Admin
+      </a>
+    </div>
+  );
+}
+
 function Hero({ event }) {
   return (
     <section
@@ -176,6 +203,7 @@ export default function Home({ onProceed }) {
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto" }}>
+      <TopBar />
       <Hero event={event} />
 
       <section style={{ padding: "0 1.5rem 2rem", display: "flex", flexDirection: "column", gap: "0.8rem" }}>
