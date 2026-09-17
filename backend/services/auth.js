@@ -5,7 +5,11 @@ import { pool } from "../config/db.js";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
 
 export async function verifyAdmin(username, password) {
-  const [[admin]] = await pool.query(`SELECT * FROM admins WHERE username = ?`, [username]);
+  const result = await pool.query(
+    `SELECT * FROM admins WHERE username = $1`,
+    [username]
+  );
+  const admin = result.rows[0];
   if (!admin) return null;
   const ok = await bcrypt.compare(password, admin.password_hash);
   return ok ? admin : null;
