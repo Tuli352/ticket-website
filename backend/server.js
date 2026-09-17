@@ -12,42 +12,54 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rate-limit payment-initiating endpoints against traffic spikes / abuse.
 const paymentLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 app.use("/api/payments", paymentLimiter);
 
+<<<<<<< HEAD
 // Rate-limit admin login against brute-forcing.
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 app.use("/api/admin/login", loginLimiter);
+=======
+app.get("/", (req, res) => {
+  res.json({ status: "ok", service: "neyo-tickets-api", database: "postgresql" });
+});
+>>>>>>> b0ab0008cf6bfcda1e38e280bfa84994f4c790df
 
 app.use("/api", apiRoutes);
 
-// Runs every 5 minutes: flips sales to "closed" once the window has
-// passed. This only changes a status flag — orders, payments, and
-// tickets are never deleted, so refunds/reconciliation stay possible.
+// Runs every 5 minutes: close sales after the event window.
 cron.schedule("*/5 * * * *", async () => {
-  const [[settings]] = await pool.query(
-    `SELECT * FROM event_settings ORDER BY id DESC LIMIT 1`
-  );
-  if (settings && settings.status === "open" && new Date() > new Date(settings.sales_close_at)) {
-    await pool.query(`UPDATE event_settings SET status = 'closed' WHERE id = ?`, [settings.id]);
-    console.log(`[cron] Sales closed for event_settings id=${settings.id}`);
+  try {
+    const result = await pool.query(
+      `SELECT * FROM event_settings ORDER BY id DESC LIMIT 1`
+    );
+    const settings = result.rows[0];
+    if (settings && settings.status === "open" && new Date() > new Date(settings.sales_close_at)) {
+      await pool.query(`UPDATE event_settings SET status = 'closed' WHERE id = $1`, [settings.id]);
+      console.log(`[cron] Sales closed for event_settings id=${settings.id}`);
+    }
+  } catch (err) {
+    console.error("[cron] Sales-close job failed:", err);
   }
 });
 
-// Also expire stale ticket reservations so inventory frees up.
+// Expire stale ticket reservations so inventory is released.
 cron.schedule("* * * * *", async () => {
-  const [expired] = await pool.query(
-    `SELECT * FROM orders WHERE status = 'reserved' AND reserved_until < NOW()`
-  );
-  for (const order of expired) {
-    await pool.query(`UPDATE orders SET status = 'expired' WHERE id = ?`, [order.id]);
-    await pool.query(
-      `UPDATE ticket_types SET reserved_quantity = reserved_quantity - ? WHERE id = ?`,
-      [order.quantity, order.ticket_type_id]
+  try {
+    const result = await pool.query(
+      `SELECT * FROM orders WHERE status = 'reserved' AND reserved_until < NOW()`
     );
+    for (const order of result.rows) {
+      await pool.query(`UPDATE orders SET status = 'expired' WHERE id = $1`, [order.id]);
+      await pool.query(
+        `UPDATE ticket_types SET reserved_quantity = reserved_quantity - $1 WHERE id = $2`,
+        [order.quantity, order.ticket_type_id]
+      );
+    }
+  } catch (err) {
+    console.error("[cron] Reservation-expiry job failed:", err);
   }
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
